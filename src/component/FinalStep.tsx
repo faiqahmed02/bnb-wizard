@@ -4,10 +4,14 @@ import { saveFormData } from "../utils/api";
 import toast from "react-hot-toast";
 import { z } from "zod";
 import { personalSchema } from "../schemas/validation";
+import { useForm } from "react-hook-form";
 
 const FinalStep: React.FC = () => {
   const { formData, resetFormData } = useFormContext();
   const navigate = useNavigate();
+
+  // Initialize react-hook-form for validation of the "I confirm" checkbox
+  const { register, handleSubmit, watch, formState: { errors } } = useForm();
 
   // Calculate Age from the Date of Birth
   const calculateAge = (dob: string) => {
@@ -19,9 +23,9 @@ const FinalStep: React.FC = () => {
   // Zod validation for form data
   const validatedData = personalSchema.safeParse(formData);
 
-  const handleFinalize = async () => {
+  const handleFinalize = async (data: any) => {
     try {
-      await saveFormData(formData);
+      await saveFormData(data);
       toast.success("Form submitted successfully");
 
       setTimeout(() => {
@@ -38,6 +42,9 @@ const FinalStep: React.FC = () => {
     toast.success("Form reset successfully.");
     navigate("/");
   };
+
+  // Watch the checkbox value
+  const confirmChecked = watch("confirm");
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
@@ -79,9 +86,21 @@ const FinalStep: React.FC = () => {
 
         {validatedData.success ? (
           <div className="mt-6 space-y-3">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                {...register("confirm", { required: "You must confirm to proceed." })}
+                className="h-4 w-4"
+              />
+              <label className="text-sm text-gray-700">I confirm that the information is correct.</label>
+            </div>
+            {errors.confirm && (
+                <p className="text-red-500 text-sm mt-1">{String(errors.confirm.message)}</p>
+            )}
             <button
-              onClick={handleFinalize}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+              onClick={handleSubmit(handleFinalize)}
+              className={`w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition ${!confirmChecked ? "opacity-50 cursor-not-allowed" : ""}`}
+              disabled={!confirmChecked}  // Disable if not checked
             >
               Finalize
             </button>
