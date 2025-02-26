@@ -4,26 +4,43 @@ import { useFormContext } from "../context/FormContext";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
-interface FormStepProps {
-  schema: z.ZodType<any>;
-  fields: { name: string; label: string; type: string }[];
-  nextStep: string;
-  prevStep?: string;
-  title: string;
+interface Field {
+  name: string;
+  label: string;
+  type: string;
+  condition?: (data: any) => boolean; // Optional condition for dynamic visibility
 }
 
-const FormStep: React.FC<FormStepProps> = ({ schema, fields, nextStep, prevStep, title }) => {
+interface FormStepProps {
+  schema: z.ZodType<any, any, any>; // This type is more flexible and works with refinements
+  title: string;
+  fields: Field[];
+  nextStep: string;
+  prevStep?: string;
+}
+
+const FormStep: React.FC<FormStepProps> = ({
+  schema,
+  title,
+  fields,
+  nextStep,
+  prevStep,
+}) => {
   const { formData, setFormData } = useFormContext();
   const navigate = useNavigate();
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm({
     defaultValues: formData,
     resolver: zodResolver(schema),
   });
+
+  // Watch all form data (including checkbox values) for dynamic field visibility
+  const formDataWatch = watch();
 
   const onSubmit = (data: any) => {
     setFormData((prev) => ({ ...prev, ...data }));
@@ -38,34 +55,40 @@ const FormStep: React.FC<FormStepProps> = ({ schema, fields, nextStep, prevStep,
       >
         <h2 className="text-2xl font-semibold text-center mb-4">{title}</h2>
 
-        {fields.map(({ name, label, type }) => (
-          <div key={name} className="mb-4">
-            <label className="block text-gray-700">{label}</label>
-            <input
-              {...register(name, type === "number" ? { valueAsNumber: true } : {})}
-              type={type}
-              placeholder={label}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {errors[name] && (
-              <p className="text-red-500 text-sm mt-1">{errors[name]?.message as string}</p>
-            )}
-          </div>
-        ))}
+        {fields.map(({ name, label, type, condition }) => {
+          // If a condition exists, check if the field should be shown
+          if (condition && !condition(formDataWatch)) return null;
 
-        <div className="flex space-x-2">
+          return (
+            <div className="mb-4" key={name}>
+              <label className="block text-gray-700">{label}</label>
+              <input
+                {...register(name, { valueAsNumber: type === "number" })} // Handle number inputs
+                type={type}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {errors[name] && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors[name]?.message as string}
+                </p>
+              )}
+            </div>
+          );
+        })}
+
+        <div className="flex justify-between">
           {prevStep && (
             <button
               type="button"
               onClick={() => navigate(prevStep)}
-              className="w-full bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 transition"
+              className="bg-gray-400 text-white py-2 px-4 rounded-lg hover:bg-gray-500 transition"
             >
               Back
             </button>
           )}
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+            className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition"
           >
             Next
           </button>

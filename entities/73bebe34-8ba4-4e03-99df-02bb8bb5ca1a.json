@@ -1,0 +1,15 @@
+{
+  "firstName": "Faiq",
+  "lastName": "Ahmed",
+  "dob": "1997-02-26",
+  "email": "faiqahmed73@hotmail.com",
+  "phone": "+11111111111",
+  "loanAmount": 10000,
+  "upfrontPayment": 0,
+  "terms": 10,
+  "monthlySalary": 10000,
+  "additionalIncome": 10,
+  "mortgage": 10,
+  "otherCredits": 10,
+  "uuid": "73bebe34-8ba4-4e03-99df-02bb8bb5ca1a"
+}
