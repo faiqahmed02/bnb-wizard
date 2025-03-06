@@ -32,7 +32,10 @@ export const loanSchema = z
     const birthYear = new Date(data.dob).getFullYear();
     const age = currentYear - birthYear;
     return age + data.terms / 12 < 80;
-  }, "Loan term exceeds allowed age limit");
+  }, {
+    message: "Loan term exceeds allowed age limit",
+    path: ["terms"],
+  });
 
 export const financialSchema = z
   .object({
@@ -48,5 +51,5 @@ export const financialSchema = z
     return disposableIncome > data.loanAmount;
   }, {
     message: "Your financial situation does not support the requested loan amount. Reduce the loan amount or restart.",
-    path: ["loanAmount"],
+    path: ["monthlySalary"],
   });

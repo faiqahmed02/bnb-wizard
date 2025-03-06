@@ -1,5 +1,6 @@
 import FormStep from "./FormSteps";
 import { personalSchema } from "../schemas/validation";
+import React from "react";
 
 const Step1 = () => {
   return (

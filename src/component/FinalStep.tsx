@@ -1,31 +1,54 @@
 import { useFormContext } from "../context/FormContext";
 import { useNavigate } from "react-router-dom";
-import { saveFormData } from "../utils/api";
+import { createEntity } from "../utils/api";
 import toast from "react-hot-toast";
 import { z } from "zod";
-import { personalSchema } from "../schemas/validation";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import React from "react";
+
+// Define schema for final confirmation
+const finalStepSchema = z.object({
+  confirm: z.boolean().refine(val => val === true, {
+    message: "You must confirm to proceed."
+  })
+});
 
 const FinalStep: React.FC = () => {
   const { formData, resetFormData } = useFormContext();
   const navigate = useNavigate();
 
-  // Initialize react-hook-form for validation of the "I confirm" checkbox
-  const { register, handleSubmit, watch, formState: { errors } } = useForm();
+  // Initialize react-hook-form with schema validation
+  const { register, handleSubmit, watch, formState: { errors } } = useForm({
+    resolver: zodResolver(finalStepSchema),
+  });
 
   // Calculate Age from the Date of Birth
   const calculateAge = (dob: string) => {
     const birthDate = new Date(dob);
-    const age = new Date().getFullYear() - birthDate.getFullYear();
-    return age;
+    return new Date().getFullYear() - birthDate.getFullYear();
   };
 
-  // Zod validation for form data
-  const validatedData = personalSchema.safeParse(formData);
+  // Validate entire form data using personalSchema
+  const validatedData = z.object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    dob: z.string().min(1, "Date of birth is required"),
+    email: z.string().email("Invalid email address"),
+    phone: z.string().min(10, "Phone number is required"),
+    loanAmount: z.number().min(1, "Loan amount is required"),
+    upfrontPayment: z.number(),
+    terms: z.number().min(1, "Loan term is required"),
+    monthlySalary: z.number().min(0),
+    additionalIncome: z.number(),
+    mortgage: z.number(),
+    otherCredits: z.number(),
+  }).safeParse(formData);
 
-  const handleFinalize = async (data: any) => {
+  // Submit final form data to API
+  const handleFinalize = async () => {
     try {
-      await saveFormData(data);
+      await createEntity(formData);  // Send complete formData
       toast.success("Form submitted successfully");
 
       setTimeout(() => {
@@ -37,13 +60,14 @@ const FinalStep: React.FC = () => {
     }
   };
 
+  // Reset form and navigate back
   const handleRestart = () => {
     resetFormData();
     toast.success("Form reset successfully.");
     navigate("/");
   };
 
-  // Watch the checkbox value
+  // Watch checkbox value
   const confirmChecked = watch("confirm");
 
   return (
@@ -85,31 +109,32 @@ const FinalStep: React.FC = () => {
         </div>
 
         {validatedData.success ? (
-          <div className="mt-6 space-y-3">
+          <form onSubmit={handleSubmit(handleFinalize)} className="mt-6 space-y-3">
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
-                {...register("confirm", { required: "You must confirm to proceed." })}
+                {...register("confirm")}
                 className="h-4 w-4"
               />
               <label className="text-sm text-gray-700">I confirm that the information is correct.</label>
             </div>
             {errors.confirm && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.confirm.message)}</p>
+              <p className="text-red-500 text-sm mt-1">{errors.confirm.message}</p>
             )}
+
             <button
-              onClick={handleSubmit(handleFinalize)}
+              type="submit"
               className={`w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition ${!confirmChecked ? "opacity-50 cursor-not-allowed" : ""}`}
-              disabled={!confirmChecked}  // Disable if not checked
+              disabled={!confirmChecked}
             >
               Finalize
             </button>
-          </div>
+          </form>
         ) : (
           <div className="text-red-500 mt-4">
             <h3 className="font-semibold">Validation Errors:</h3>
             <ul className="list-disc list-inside">
-              {validatedData.error.errors.map((error, index) => (
+              {validatedData.error?.errors.map((error, index) => (
                 <li key={index}>{error.message}</li>
               ))}
             </ul>

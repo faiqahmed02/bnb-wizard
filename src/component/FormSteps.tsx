@@ -3,16 +3,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFormContext } from "../context/FormContext";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { createEntity, updateEntity } from '../utils/api'
+import React from "react";
 
 interface Field {
   name: string;
   label: string;
   type: string;
-  condition?: (data: any) => boolean; // Optional condition for dynamic visibility
+  condition?: (data: any) => boolean;
 }
 
 interface FormStepProps {
-  schema: z.ZodType<any, any, any>; // This type is more flexible and works with refinements
+  schema: z.ZodType<any, any, any>;
   title: string;
   fields: Field[];
   nextStep: string;
@@ -26,7 +28,7 @@ const FormStep: React.FC<FormStepProps> = ({
   nextStep,
   prevStep,
 }) => {
-  const { formData, setFormData } = useFormContext();
+  const { formData, setFormData, uuid, setUuid } = useFormContext();
   const navigate = useNavigate();
 
   const {
@@ -39,12 +41,24 @@ const FormStep: React.FC<FormStepProps> = ({
     resolver: zodResolver(schema),
   });
 
-  // Watch all form data (including checkbox values) for dynamic field visibility
   const formDataWatch = watch();
 
-  const onSubmit = (data: any) => {
-    setFormData((prev) => ({ ...prev, ...data }));
-    navigate(nextStep);
+  const onSubmit = async (data: any) => {
+    try {
+      if (!uuid) {
+        // First step: create a new entity
+        const response = await createEntity(data);
+        setUuid(response.uuid);
+      } else {
+        // Subsequent steps: update the existing entity
+        await updateEntity(uuid, data);
+      }
+
+      setFormData((prev) => ({ ...prev, ...data }));
+      navigate(nextStep);
+    } catch (error) {
+      console.error("Error saving form data:", error);
+    }
   };
 
   return (
@@ -56,14 +70,13 @@ const FormStep: React.FC<FormStepProps> = ({
         <h2 className="text-2xl font-semibold text-center mb-4">{title}</h2>
 
         {fields.map(({ name, label, type, condition }) => {
-          // If a condition exists, check if the field should be shown
           if (condition && !condition(formDataWatch)) return null;
 
           return (
             <div className="mb-4" key={name}>
               <label className="block text-gray-700">{label}</label>
               <input
-                {...register(name, { valueAsNumber: type === "number" })} // Handle number inputs
+                {...register(name, { valueAsNumber: type === "number" })}
                 type={type}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
